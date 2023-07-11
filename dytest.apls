@@ -1,0 +1,50 @@
+#!/opt/homebrew/bin/dyalogscript
+⍝ Simple test runner for unit tests.
+⍝
+⍝ To run: dyalogscript dytest.apls code-dir test-dir
+
+⎕IO ← 0 ⍝ IO delenda est
+assert←{⍺←'assertion failure' ⋄ 0∊⍵:⍺ ⎕signal 8 ⋄ shy←0}
+print ← {{⎕←(⍕⍵)}¨⊆⍵}
+
+⍝ We want the full session stuff loaded, esp Link
+DYALOG ← 2 ⎕NQ #'GetEnvironment' 'DYALOG'
+⍎⊃2⎕FIX 'file://',DYALOG,'/StartupSession.aplf'
+args ← 2⎕NQ#'GetCommandLineArgs'
+'To run: dyalogscript dytest.apls code-dir test-dir'⎕SIGNAL (3=≢args)↓11
+
+Expandpath ← {
+    path ← ⎕SE.Dyalog.Utils.ExpandConfig ⍵
+    '/'≠⊃path:(⊃⎕SH'pwd'),'/',path
+    path
+}
+
+(srcdir testdir) ← Expandpath¨1↓args
+
+⎕SE.Link.Import # srcdir
+⎕SE.Link.Import # testdir
+
+⍝ Test functions are 'niladic'
+RunTests ← {
+    tests ← 'test_.+'⎕S'&'⎕NL ¯3
+    0=≢tests: 'no tests found'
+    ↑{⍺,('.'/⍨30-≢⍺),⍵⊃'[FAIL]' '[OK]'}⌿↑tests ({0::0⋄(⍎⍵)⍬}¨tests)
+}
+
+print RunTests ⍬
+
+⍝ Parametric tests:
+⍝ 
+⍝ Look for vectors named {xyz}_testdata
+
+RunParametric ← { ⍝ ⍵ -- ns containing functions to be tested
+    _test←{0::0⋄(⊢/↑⍵)≡⍤0 0⊢⍺⍺/¯1↓⍤1⊢↑⍵}
+    params ← '_'(≠⊆⊢)¨'[^_]+_testdata'⎕S'&'⎕NL¯2.1
+    0=≢params: ''
+    funs ← ⊃¨↓¯1↓⍤1↑params                            ⍝ Corresponding functions defined?
+    testable ← funs/⍨funs∊⎕NL¯3
+    result←{(⍎⍵)_test⍎⍵,'_testdata'}¨testable    ⍝ Run the tests
+    ↑{⍺,('.'/⍨30-≢⍺),'[',(⍕+/⍵),'/',(⍕≢⍵),']'}⌿↑testable result ⍝ Format
+}
+
+print RunParametric ⍬

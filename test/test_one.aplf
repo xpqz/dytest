@@ -1,0 +1,4 @@
+test_one ← {
+    _←assert 'ABC'≡upcase 'abc'
+    1
+}
