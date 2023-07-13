@@ -1,4 +1,4 @@
 test_three ← {
-    _←'Upcase failed' assert 'XYZ'≡upcase 'abc' ⍝ fails
+    assert 'XYZ'≡upcase 'abc': ⍝ fails
     1
 }

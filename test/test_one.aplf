@@ -1,4 +1,4 @@
 test_one ← {
-    _←assert 'ABC'≡upcase 'abc'
+    assert 'ABC'≡upcase 'abc':
     1
 }

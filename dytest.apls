@@ -3,9 +3,9 @@
 ⍝
 ⍝ To run: dyalogscript dytest.apls code-dir test-dir
 
-⎕IO ← 0 ⍝ IO delenda est
-assert←{⍺←'assertion failure' ⋄ 0∊⍵:⍺ ⎕signal 8 ⋄ shy←0}
-print ← {{⎕←(⍕⍵)}¨⊆⍵}
+⎕IO ← 0
+assert ← {⍺←'assertion failure' ⋄ 0∊⍵:⍺ ⎕signal 8 ⋄ shy←0}
+Print ← {{⎕←(⍕⍵)}¨⊆⍵}
 
 ⍝ We want the full session stuff loaded, esp Link
 DYALOG ← 2 ⎕NQ #'GetEnvironment' 'DYALOG'
@@ -13,38 +13,71 @@ DYALOG ← 2 ⎕NQ #'GetEnvironment' 'DYALOG'
 args ← 2⎕NQ#'GetCommandLineArgs'
 'To run: dyalogscript dytest.apls code-dir test-dir'⎕SIGNAL (3=≢args)↓11
 
+∇ r←cwd
+    r←⊃1⎕NPARTS'' ⍝ https://aplcart.info/?q=pwd+expression
+∇
+
 Expandpath ← {
     path ← ⎕SE.Dyalog.Utils.ExpandConfig ⍵
-    '/'≠⊃path:(⊃⎕SH'pwd'),'/',path
+    '/'≠⊃path:cwd,'/',path
     path
 }
 
 (srcdir testdir) ← Expandpath¨1↓args
 
+⍝ Should link these to a namespace
 ⎕SE.Link.Import # srcdir
 ⎕SE.Link.Import # testdir
 
 ⍝ Test functions are 'niladic'
 RunTests ← {
     tests ← 'test_.+'⎕S'&'⎕NL ¯3
-    0=≢tests: 'no tests found'
-    ↑{⍺,('.'/⍨30-≢⍺),⍵⊃'[FAIL]' '[OK]'}⌿↑tests ({0::0⋄(⍎⍵)⍬}¨tests)
+    0=≢tests:⍬
+    tests ({0::0⋄(⍎⍵)⍬}¨tests)
 }
 
-print RunTests ⍬
+res ← RunTests⍬
+
+(pass fail) ← 0
+:if ⍬≢res
+    pass +← +⌿⊃⊖res
+    fail +← (≢⊃⊖res)-pass
+    Print ↑{⍺,('.'/⍨30-≢⍺),⍵⊃'[FAIL]' '[PASS]'}⌿↑res
+:end
 
 ⍝ Parametric tests:
 ⍝ 
 ⍝ Look for vectors named {xyz}_testdata
 
 RunParametric ← { ⍝ ⍵ -- ns containing functions to be tested
-    _test←{0::0⋄(⊢/↑⍵)≡⍤0 0⊢⍺⍺/¯1↓⍤1⊢↑⍵}
+    _test ← {0::0⋄(⊢/↑⍵)≡⍤0 0⊢⍺⍺/¯1↓⍤1⊢↑⍵}
     params ← '_'(≠⊆⊢)¨'[^_]+_testdata'⎕S'&'⎕NL¯2.1
-    0=≢params: ''
-    funs ← ⊃¨↓¯1↓⍤1↑params                            ⍝ Corresponding functions defined?
+    0=≢params: ⍬
+    funs ← ⊃¨↓¯1↓⍤1↑params                         ⍝ Corresponding functions defined?
     testable ← funs/⍨funs∊⎕NL¯3
-    result←{(⍎⍵)_test⍎⍵,'_testdata'}¨testable    ⍝ Run the tests
-    ↑{⍺,('.'/⍨30-≢⍺),'[',(⍕+/⍵),'/',(⍕≢⍵),']'}⌿↑testable result ⍝ Format
+    result ← {(⍎⍵)_test⍎⍵,'_testdata'}¨testable    ⍝ Run the tests
+    testable result
 }
 
-print RunParametric ⍬
+res ← RunParametric ⍬
+
+:if ⍬≢res
+    passes ← +⌿∊⊃⊖res
+    fail +← (≢∊⊃⊖res)-passes
+    pass +← passes
+    Print ↑{⍺,('.'/⍨30-≢⍺),'[',(⍕+/⍵),'/',(⍕≢⍵),']'}⌿↑res ⍝ Format
+:end
+
+Print '[PASS] ', ⍕pass
+Print '[FAIL] ', ⍕fail
+
+⍝ ∇ RunNS ;nsnames;nsfnames
+⍝     ⍝ Find all imported namespaces called test_
+⍝     nsnames ← '^test_.+'⎕S'&'⎕NL¯9
+
+⍝     ⍝ Find all test funs in each test namespace
+⍝     :for ns :in nsnames
+⍝         nsfnames ← 'test_.+'⎕S'&'ns.⎕NL ¯3
+
+⍝     :end
+⍝ ∇
